@@ -1,0 +1,90 @@
+# -- coding: utf-8 --
+import pandas as pd
+import time
+import re
+import requests
+from bs4 import BeautifulSoup
+import json
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+import time
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.action_chains import ActionChains
+
+r=webdriver.Chrome("C:\Program Files\Google\Chrome\Application\chromedriver.exe")            #获取chrome浏览器的驱动，并启动Chrome浏览器
+r.implicitly_wait(100)
+r.get('http://jrbx360.cn/search?keyword=%E5%8C%BB')
+
+#-----------筛选-------------
+ac = ActionChains(r)
+# 鼠标移动到元素上
+ac.move_to_element(
+    r.find_element(By.CSS_SELECTOR,".sc-AxjAm.sc-fzqyOu.faxUzv")
+).perform()
+#点击
+type_1=r.find_element(By.XPATH,"/html/body/div[2]/div/div/div/div[2]/div/div/div[1]/div/div[2]")
+type_1.click()
+type_2=r.find_element(By.XPATH,"/html/body/div[2]/div/div/div/div[2]/div/div/div[2]/button[2]")
+type_2.click()
+#—————-登录-—————
+type_1=r.find_element(By.XPATH,"//*[@id='components-search']/div/div[2]/div[3]/div[4]/div[1]/div[1]/div/div/div[1]/div")
+type_1.click()
+time.sleep(10)     #10s内扫码登录
+#—————-初始化表格-—————
+k=11    #选取的数据列数
+text_all=[]
+for i in range(k):
+    text_all.append([])
+#—————-对所有列表进行循环—————-
+while(1):
+#对当前页每一个元素进行循环
+    mainWindow = r.current_window_handle
+    elements=r.find_elements(By.CSS_SELECTOR,".sc-fznZeY.cAizuM   .ant-space-item")
+     #------进入当前界面------
+    for element in elements:
+        element.click() 
+        for handle in r.window_handles:
+            # 先切换到该窗口
+            r.switch_to.window(handle)
+            mainWindow_1 = r.current_window_handle
+            # 得到该窗口的标题栏字符串，判断是不是我们要操作的那个窗口
+            if '今日标讯-公告详情 ' in r.title:
+            # 如果是，那么这时候WebDriver对象就是对应的该该窗口，正好，跳出循环，
+                break
+        type_1=r.find_element(By.XPATH,"//*[@id='components-article-detail']/div/div[3]/div[1]/div[1]/a[2]/span")
+        type_1.click()
+        for handle in r.window_handles:
+            # 先切换到该窗口
+            r.switch_to.window(handle)
+            # 得到该窗口的标题栏字符串，判断是不是我们要操作的那个窗口
+            if ' 今日标讯-公告概要  ' in r.title:
+            # 如果是，那么这时候WebDriver对象就是对应的该该窗口，正好，跳出循环，
+                break
+        Xpath_test='//*[@id="components-article-abstract"]/div/div[2]/div/div[1]'
+        #------采集信息------
+        while(1):
+            if r.find_element(By.XPATH,Xpath_test).text=='标题：':
+                time.sleep(0.5)
+                continue
+            else:
+                break
+        for i in range(k):
+            Xpath_pre='//*[@id="components-article-abstract"]/div/div[2]/div/div['
+            text_all[i].append(r.find_element(By.XPATH,Xpath_pre+str(i+1)+']').text)
+        #------退出页面------
+        r.close()
+        r.switch_to.window(mainWindow_1)
+        r.close()
+        r.switch_to.window(mainWindow)
+    type_1=r.find_element(By.CSS_SELECTOR,".ant-pagination-next")
+    try:
+        type_1.click()
+        continue
+    except:
+        break
+#—————-写入EXCEL—————-
+writer = pd.ExcelWriter('yi.xlsx')
+text_all_1=pd.DataFrame(text_all)
+for i in range(k):
+    text_all_1.to_excel(writer, sheet_name="一个随便的名字")
+writer.save()
